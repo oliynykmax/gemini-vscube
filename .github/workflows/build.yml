@@ -27,11 +27,25 @@ jobs:
       - name: Build
         run: bun run build:release
 
+      - name: Create macOS Archive
+        run: |
+          cd build
+          # Find the .app directory
+          APP_DIR=$(find . -name "*.app" -type d | head -1)
+          if [ -z "$APP_DIR" ]; then
+            # If no .app found, zip the whole build directory
+            zip -r ../VSCubing-Desktop-macOS.zip .
+          else
+            # Zip the .app bundle
+            zip -r ../VSCubing-Desktop-macOS.zip "$APP_DIR"
+          fi
+          cd ..
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: VSCubing-macOS
-          path: build/
+          path: VSCubing-Desktop-macOS.zip
           if-no-files-found: error
 
   build-linux:
@@ -50,11 +64,48 @@ jobs:
       - name: Build
         run: bun run build:release
 
+      - name: Create Linux Archive
+        run: |
+          cd build
+          # Create a proper directory structure
+          mkdir -p VSCubing-Desktop
+          cp -r */* VSCubing-Desktop/ 2>/dev/null || cp -r * VSCubing-Desktop/
+          # Create launcher script
+          cat > VSCubing-Desktop/run.sh << 'EOF'
+          #!/bin/bash
+          # VSCubing Desktop Launcher
+          DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+          cd "$DIR"
+          ./bin/launcher
+          EOF
+          chmod +x VSCubing-Desktop/run.sh
+          chmod +x VSCubing-Desktop/bin/launcher
+          chmod +x VSCubing-Desktop/bin/bun
+          # Create README
+          cat > VSCubing-Desktop/README.txt << 'EOF'
+          VSCubing Desktop - Linux
+          ========================
+          
+          To run the application:
+          1. Open a terminal
+          2. Navigate to this directory
+          3. Run: ./run.sh
+          
+          Or directly run: ./bin/launcher
+          
+          Requirements:
+          - Linux with GTK support
+          
+          For support, visit: https://github.com/oliynykmax/gemini-vscube
+          EOF
+          zip -r ../VSCubing-Desktop-Linux.zip VSCubing-Desktop/
+          cd ..
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: VSCubing-Linux
-          path: build/
+          path: VSCubing-Desktop-Linux.zip
           if-no-files-found: error
 
   build-windows:
@@ -73,11 +124,48 @@ jobs:
       - name: Build
         run: bun run build:release
 
+      - name: Create Windows Archive
+        shell: pwsh
+        run: |
+          cd build
+          # Create a proper directory structure
+          New-Item -ItemType Directory -Force -Path "VSCubing-Desktop"
+          Get-ChildItem -Directory | ForEach-Object { 
+            Copy-Item -Path $_.FullName\* -Destination VSCubing-Desktop\ -Recurse -Force 
+          }
+          # Create launcher script
+          @'
+          @echo off
+          echo VSCubing Desktop
+          echo ================
+          echo.
+          cd /d "%~dp0"
+          start bin\launcher.exe
+          '@ | Set-Content -Path "VSCubing-Desktop\Run.bat" -Encoding ASCII
+          # Create README
+          @'
+          VSCubing Desktop - Windows
+          ==========================
+          
+          To run the application:
+          1. Double-click on Run.bat
+          2. Or navigate to bin/ folder and run launcher.exe
+          
+          Requirements:
+          - Windows 10 or later
+          - WebView2 Runtime (usually pre-installed)
+          
+          For support, visit: https://github.com/oliynykmax/gemini-vscube
+          '@ | Set-Content -Path "VSCubing-Desktop\README.txt" -Encoding ASCII
+          # Create the zip
+          Compress-Archive -Path "VSCubing-Desktop" -DestinationPath "..\VSCubing-Desktop-Windows.zip" -Force
+          cd ..
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: VSCubing-Windows
-          path: build/
+          path: VSCubing-Desktop-Windows.zip
           if-no-files-found: error
 
   release:
@@ -90,14 +178,43 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Display structure
+        run: ls -R
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            VSCubing-macOS/**
-            VSCubing-Linux/**
-            VSCubing-Windows/**
+            VSCubing-macOS/VSCubing-Desktop-macOS.zip
+            VSCubing-Linux/VSCubing-Desktop-Linux.zip
+            VSCubing-Windows/VSCubing-Desktop-Windows.zip
           draft: false
           prerelease: false
+          generate_release_notes: true
+          body: |
+            ## VSCubing Desktop
+            
+            A dual-mode desktop application for VSCubing - practice offline or connect to vscubing.com
+            
+            ### Downloads
+            
+            Choose your platform:
+            - **macOS**: Download `VSCubing-Desktop-macOS.zip`
+            - **Linux**: Download `VSCubing-Desktop-Linux.zip`  
+            - **Windows**: Download `VSCubing-Desktop-Windows.zip`
+            
+            ### Installation
+            
+            1. Download the appropriate zip file for your platform
+            2. Extract the zip file
+            3. Follow the README.txt in the extracted folder
+            
+            ### Features
+            
+            - **Global Mode**: Connect to https://vscubing.com with persistent sessions
+            - **Local Mode**: Offline practice with local SQLite database
+            - Cross-platform support (macOS, Linux, Windows)
+            
+            For more information, visit: https://github.com/oliynykmax/gemini-vscube
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
