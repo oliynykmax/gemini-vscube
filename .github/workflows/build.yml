@@ -28,7 +28,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VSCubing-macOS
-          path: dist/
+          path: build/
+          if-no-files-found: error
 
   build-linux:
     runs-on: ubuntu-latest
@@ -50,7 +51,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VSCubing-Linux
-          path: dist/
+          path: build/
+          if-no-files-found: error
 
   build-windows:
     runs-on: windows-latest
@@ -72,7 +74,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VSCubing-Windows
-          path: dist/
+          path: build/
+          if-no-files-found: error
 
   release:
     needs: [build-macos, build-linux, build-windows]
