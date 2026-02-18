@@ -1,0 +1,38 @@
+{
+  "name": "gemini-vscube",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run build:dev && electrobun dev",
+    "build:dev": "bun install && electrobun build",
+    "build:release": "bun install && electrobun build --env stable",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "local:dev": "cd src/local-server && bun --hot index.ts",
+    "local:build": "cd src/local-server && bun build index.ts --outdir ../../.local-server --target bun",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "electrobun": "^1.12.3",
+    "drizzle-orm": "^0.41.0",
+    "@libsql/client": "^0.14.0",
+    "zod": "^3.24.2",
+    "next": "15.4.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@trpc/server": "^11.0.1",
+    "@trpc/client": "^11.0.1",
+    "superjson": "^2.2.1",
+    "cubing": "^0.57.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.30.6",
+    "typescript": "^5.8.2"
+  }
+}
