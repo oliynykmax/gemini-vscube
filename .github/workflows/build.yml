@@ -30,16 +30,41 @@ jobs:
       - name: Create macOS Archive
         run: |
           cd build
-          # Find the .app directory
+          BUILD_DIR=$(find . -type d -name "*macos*" | head -1)
+          if [ -z "$BUILD_DIR" ]; then BUILD_DIR="."; fi
+          cd "$BUILD_DIR"
           APP_DIR=$(find . -name "*.app" -type d | head -1)
           if [ -z "$APP_DIR" ]; then
-            # If no .app found, zip the whole build directory
-            zip -r ../VSCubing-Desktop-macOS.zip .
+            mkdir -p VSCubing-Desktop
+            cp -r */* VSCubing-Desktop/ 2>/dev/null || cp -r * VSCubing-Desktop/
+            echo "VSCubing Desktop - macOS
+========================
+
+To run:
+1. Navigate to the VSCubing-Desktop folder
+2. Run: ./bin/launcher
+
+Requirements: macOS 11 or later
+Note: This is an unsigned build. Right-click and select \"Open\" the first time.
+
+For support: https://github.com/oliynykmax/gemini-vscube" > VSCubing-Desktop/README.txt
+            zip -r ../../VSCubing-Desktop-macOS.zip VSCubing-Desktop/
           else
-            # Zip the .app bundle
-            zip -r ../VSCubing-Desktop-macOS.zip "$APP_DIR"
+            mkdir -p "VSCubing Desktop"
+            cp -r "$APP_DIR" "VSCubing Desktop/"
+            echo "VSCubing Desktop - macOS
+========================
+
+To run:
+1. Open \"VSCubing Desktop\" folder
+2. Double-click the .app bundle
+
+Requirements: macOS 11 or later
+Note: This is an unsigned build. Right-click and select \"Open\" the first time.
+
+For support: https://github.com/oliynykmax/gemini-vscube" > "VSCubing Desktop/README.txt"
+            zip -r ../../VSCubing-Desktop-macOS.zip "VSCubing Desktop/"
           fi
-          cd ..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -67,39 +92,34 @@ jobs:
       - name: Create Linux Archive
         run: |
           cd build
-          # Create a proper directory structure
+          BUILD_DIR=$(find . -type d -name "*linux*" | head -1)
+          if [ -z "$BUILD_DIR" ]; then BUILD_DIR="."; fi
+          cd "$BUILD_DIR"
+          APP_DIR=$(find . -maxdepth 1 -type d | grep -v "^\\.$" | head -1)
+          if [ -z "$APP_DIR" ]; then APP_DIR="."; fi
           mkdir -p VSCubing-Desktop
-          cp -r */* VSCubing-Desktop/ 2>/dev/null || cp -r * VSCubing-Desktop/
-          # Create launcher script
-          cat > VSCubing-Desktop/run.sh << 'EOF'
-          #!/bin/bash
-          # VSCubing Desktop Launcher
-          DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-          cd "$DIR"
-          ./bin/launcher
-          EOF
+          cp -r "$APP_DIR"/* VSCubing-Desktop/
+          echo '#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR"
+./bin/launcher' > VSCubing-Desktop/run.sh
           chmod +x VSCubing-Desktop/run.sh
-          chmod +x VSCubing-Desktop/bin/launcher
-          chmod +x VSCubing-Desktop/bin/bun
-          # Create README
-          cat > VSCubing-Desktop/README.txt << 'EOF'
-          VSCubing Desktop - Linux
-          ========================
-          
-          To run the application:
-          1. Open a terminal
-          2. Navigate to this directory
-          3. Run: ./run.sh
-          
-          Or directly run: ./bin/launcher
-          
-          Requirements:
-          - Linux with GTK support
-          
-          For support, visit: https://github.com/oliynykmax/gemini-vscube
-          EOF
-          zip -r ../VSCubing-Desktop-Linux.zip VSCubing-Desktop/
-          cd ..
+          chmod +x VSCubing-Desktop/bin/launcher 2>/dev/null || true
+          chmod +x VSCubing-Desktop/bin/bun 2>/dev/null || true
+          echo "VSCubing Desktop - Linux
+========================
+
+To run:
+1. Open a terminal
+2. Navigate to this directory  
+3. Run: ./run.sh
+
+Or run directly: ./bin/launcher
+
+Requirements: Linux with GTK support
+
+For support: https://github.com/oliynykmax/gemini-vscube" > VSCubing-Desktop/README.txt
+          zip -r ../../VSCubing-Desktop-Linux.zip VSCubing-Desktop/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -128,38 +148,16 @@ jobs:
         shell: pwsh
         run: |
           cd build
-          # Create a proper directory structure
+          $buildDir = Get-ChildItem -Directory | Where-Object { $_.Name -like "*win*" } | Select-Object -First 1
+          if (-not $buildDir) { $buildDir = Get-Item "." }
+          cd $buildDir
+          $appDir = Get-ChildItem -Directory | Select-Object -First 1
+          if (-not $appDir) { $appDir = Get-Item "." }
           New-Item -ItemType Directory -Force -Path "VSCubing-Desktop"
-          Get-ChildItem -Directory | ForEach-Object { 
-            Copy-Item -Path $_.FullName\* -Destination VSCubing-Desktop\ -Recurse -Force 
-          }
-          # Create launcher script
-          @'
-          @echo off
-          echo VSCubing Desktop
-          echo ================
-          echo.
-          cd /d "%~dp0"
-          start bin\launcher.exe
-          '@ | Set-Content -Path "VSCubing-Desktop\Run.bat" -Encoding ASCII
-          # Create README
-          @'
-          VSCubing Desktop - Windows
-          ==========================
-          
-          To run the application:
-          1. Double-click on Run.bat
-          2. Or navigate to bin/ folder and run launcher.exe
-          
-          Requirements:
-          - Windows 10 or later
-          - WebView2 Runtime (usually pre-installed)
-          
-          For support, visit: https://github.com/oliynykmax/gemini-vscube
-          '@ | Set-Content -Path "VSCubing-Desktop\README.txt" -Encoding ASCII
-          # Create the zip
-          Compress-Archive -Path "VSCubing-Desktop" -DestinationPath "..\VSCubing-Desktop-Windows.zip" -Force
-          cd ..
+          Copy-Item -Path "$($appDir.FullName)\*" -Destination "VSCubing-Desktop\" -Recurse -Force
+          Set-Content -Path "VSCubing-Desktop\Run.bat" -Value "@echo off`necho VSCubing Desktop`necho ================`necho.`ncd /d \"%~dp0\"`nstart bin\launcher.exe" -Encoding ASCII
+          Set-Content -Path "VSCubing-Desktop\README.txt" -Value "VSCubing Desktop - Windows`n==========================`n`nTo run:`n1. Double-click on Run.bat`n2. Or navigate to bin folder and run launcher.exe`n`nRequirements: Windows 10 or later`n`nFor support: https://github.com/oliynykmax/gemini-vscube" -Encoding ASCII
+          Compress-Archive -Path "VSCubing-Desktop" -DestinationPath "..\..\VSCubing-Desktop-Windows.zip" -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
