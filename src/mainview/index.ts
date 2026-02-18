@@ -1,7 +1,7 @@
-import { webview } from "electrobun/webview";
+import { Electroview } from "electrobun/view";
 import type { MainviewRPCType, AppMode, AppState } from "../shared/types";
 
-const rpc = webview.defineRPC<MainviewRPCType>({
+const rpc = Electroview.defineRPC<MainviewRPCType>({
   maxRequestTime: 10000,
   handlers: {
     requests: {},
@@ -12,6 +12,8 @@ const rpc = webview.defineRPC<MainviewRPCType>({
     },
   },
 });
+
+const electroview = new Electroview({ rpc });
 
 let selectedMode: AppMode | null = null;
 let currentState: AppState | null = null;
@@ -50,7 +52,7 @@ function updateUI(state: AppState) {
 
 async function init() {
   try {
-    const state = await rpc.handlers.requests.getAppState();
+    const state = await electroview.rpc.request.getAppState();
     updateUI(state);
   } catch (error) {
     console.error("Failed to get app state:", error);
@@ -78,7 +80,7 @@ localModeBtn.addEventListener("click", async () => {
     try {
       launchBtn.disabled = true;
       launchBtn.textContent = "Starting server...";
-      const result = await rpc.handlers.requests.startLocalServer();
+      const result = await electroview.rpc.request.startLocalServer();
       if (result.ok) {
         statusIndicator.classList.add("running");
         serverStatusText.textContent = `Server running at ${result.url}`;
@@ -103,7 +105,7 @@ launchBtn.addEventListener("click", async () => {
   launchBtn.textContent = "Launching...";
 
   try {
-    const result = await rpc.handlers.requests.setMode({ mode: selectedMode });
+    const result = await electroview.rpc.request.setMode({ mode: selectedMode });
     if (!result.ok) {
       alert(result.error || "Failed to switch mode");
     }
@@ -123,12 +125,12 @@ toggleServerBtn.addEventListener("click", async () => {
 
   try {
     if (currentState.localServerRunning) {
-      await rpc.handlers.requests.stopLocalServer();
+      await electroview.rpc.request.stopLocalServer();
       statusIndicator.classList.remove("running");
       serverStatusText.textContent = "Server stopped";
       toggleServerBtn.textContent = "Start Server";
     } else {
-      const result = await rpc.handlers.requests.startLocalServer();
+      const result = await electroview.rpc.request.startLocalServer();
       if (result.ok) {
         statusIndicator.classList.add("running");
         serverStatusText.textContent = `Server running at ${result.url}`;
